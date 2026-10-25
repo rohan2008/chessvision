@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chess Glasses</title>
+<meta name="description" content="Look at a chess board through Meta glasses, take a photo, and hear the best move.">
+<link rel="stylesheet" href="site.css">
+<style>
+  .hero { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 56px; align-items: center; padding: 56px 0 40px; }
+  .hero h1 { font-size: clamp(38px, 6vw, 64px); margin: 14px 0 18px; }
+  .hero h1 em { font-style: italic; color: var(--accent); }
+  .hero p.lede { font-size: 19px; color: var(--muted); max-width: 34ch; margin: 0 0 26px; }
+  .cta { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .free-note { margin-top: 18px; font-size: 14px; color: var(--muted); }
+  .free-note b { color: var(--ink); font-weight: 600; }
+
+  .demo { position: relative; max-width: 420px; justify-self: end; width: 100%; }
+  .demo .board-frame { transform: rotate(-2deg); }
+  .bubble { position: absolute; left: -28px; bottom: -22px; background: var(--ink); color: var(--bg); padding: 12px 16px 12px 14px; border-radius: 4px 18px 18px 18px; display: flex; gap: 10px; align-items: center; box-shadow: 0 10px 24px -12px #000a; max-width: 85%; }
+  .bubble svg { flex: none; }
+  .bubble .said { font-family: var(--serif); font-size: 19px; line-height: 1.2; }
+  .bubble .who { font-size: 12px; opacity: .7; }
+
+  .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin: 40px 0; }
+  .step { padding: 26px 24px 28px 0; }
+  .step + .step { padding-left: 24px; border-left: 1px solid var(--line); }
+  .step .num { font-family: var(--serif); font-size: 15px; color: var(--brass); font-weight: 700; }
+  .step h2 { font-size: 24px; margin: 10px 0 8px; display: flex; align-items: center; gap: 10px; }
+  .step p { margin: 0; color: var(--muted); }
+  .step svg { color: var(--accent); }
+
+  .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+  .two .card p { margin: 6px 0 14px; color: var(--muted); }
+  .section-title { font-size: 30px; margin: 56px 0 18px; }
+
+  .faq { border-top: 1px solid var(--line); }
+  .faq details { border-bottom: 1px solid var(--line); padding: 16px 0; }
+  .faq summary { font-family: var(--serif); font-size: 19px; }
+  .faq details p { color: var(--muted); margin: 10px 0 0 22px; max-width: 70ch; }
+
+  @media (max-width: 860px) {
+    .hero { grid-template-columns: minmax(0, 1fr); gap: 48px; padding-top: 32px; }
+    .demo { justify-self: center; max-width: 360px; }
+    .bubble { left: -8px; }
+    .steps, .two { grid-template-columns: minmax(0, 1fr); }
+    .step, .step + .step { padding: 22px 0; border-left: 0; }
+    .step + .step { border-top: 1px solid var(--line); }
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="/"><span class="knight">♞&#xFE0E;</span>Chess Glasses</a>
+    <nav class="nav">
+      <a href="#how">How it works</a>
+      <a href="/play" id="playLink">Live board</a>
+      <a href="/setup" id="setupLink">Set up</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <div>
+      <span class="eyebrow">For Ray-Ban Meta &amp; Oakley Meta glasses + iPhone</span>
+      <h1>Look at the board.<br><em>Hear</em> the best move.</h1>
+      <p class="lede">Say “Hey Meta, take a photo”, tap the back of your phone, and the strongest move plays in your ear.</p>
+      <div class="cta">
+        <a class="btn primary" href="/setup" id="ctaSetup">Set up in 5 minutes →</a>
+        <a class="btn ghost" href="/test" id="ctaTest">Try it without a board</a>
+      </div>
+      <p class="free-note" id="freeNote">Free to use. No app to install.</p>
+    </div>
+
+    <div class="demo" aria-hidden="true">
+      <div class="board-frame">
+        <div class="board-wrap">
+          <div class="board" id="demoBoard"></div>
+          <svg class="arrows" id="demoArrows" viewBox="0 0 8 8"></svg>
+        </div>
+      </div>
+      <div class="bubble">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+        <div><div class="who">In your glasses</div><div class="said">“Bishop f1 to b5”</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="steps" id="how">
+    <div class="step">
+      <span class="num">01</span>
+      <h2>
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="17" r="5"/><circle cx="23" cy="17" r="5"/><path d="M14 16.5c1.3-1 2.7-1 4 0M4 17 2 11M28 17l2-6"/></svg>
+        Look
+      </h2>
+      <p>When it's your move, look down at the board and say <b>“Hey Meta, take a photo.”</b></p>
+    </div>
+    <div class="step">
+      <span class="num">02</span>
+      <h2>
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="14" height="26" rx="3"/><path d="M14 25h4"/><path d="M4 12c-1.3 2.6-1.3 5.4 0 8M28 12c1.3 2.6 1.3 5.4 0 8"/></svg>
+        Tap
+      </h2>
+      <p>Double-tap the back of your iPhone. It sends the photo, and the board is read and checked against the game so far.</p>
+    </div>
+    <div class="step">
+      <span class="num">03</span>
+      <h2>
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 7 8 12H4v8h4l6 5V7z"/><path d="M20 12a6 6 0 0 1 0 8M24 8a11 11 0 0 1 0 16"/></svg>
+        Hear
+      </h2>
+      <p>About ten seconds later you hear the best move, like <i>“They played Nf6. Knight g1 to f3.”</i></p>
+    </div>
+  </section>
+
+  <div class="two">
+    <div class="card">
+      <h2>Follow along on a screen</h2>
+      <p>The live board shows the position, the suggested move and the engine's top lines as you play. It can also speak moves out loud or scan using a laptop camera.</p>
+      <a class="btn" href="/play" id="cardPlay">Open live board</a>
+    </div>
+    <div class="card">
+      <h2>No chess set nearby?</h2>
+      <p>The test board shows a position on your computer screen. Photograph it with your glasses or phone, and it tells you if the app read it correctly.</p>
+      <a class="btn" href="/test" id="cardTest">Open test board</a>
+    </div>
+  </div>
+
+  <h2 class="section-title">Questions</h2>
+  <div class="faq">
+    <details>
+      <summary>Is it free?</summary>
+      <p id="faqFree">Yes. The chess engine (Stockfish) is free and runs on this site. Reading the board uses Google's Gemini AI: you can use this site's shared key for a number of free scans a day, or add your own free Gemini key for unlimited scans.</p>
+    </details>
+    <details>
+      <summary>Which glasses and phones work?</summary>
+      <p>Any Meta AI glasses that take photos (Ray-Ban Meta, Oakley Meta) paired with an iPhone. The hands-free part uses an Apple Shortcut. On Android, or without glasses, open the live board and use your phone's camera instead.</p>
+    </details>
+    <details>
+      <summary>How accurate is it?</summary>
+      <p>It's best when you start from the beginning of a game and take a photo after every move. Each new photo then only has to show which legal move was played, so small misreads get corrected automatically. If something looks wrong, you can fix the position on the live board.</p>
+    </details>
+    <details>
+      <summary>What happens to my photos?</summary>
+      <p>Each photo is sent to Google's Gemini to read the board and isn't stored by this site. If you add your own key, it stays on your phone and in your Shortcut. Google may use images sent on its free tier to improve its products.</p>
+    </details>
+    <details>
+      <summary>Can I use it in tournaments?</summary>
+      <p>No. Using engine help in rated, online or tournament games is cheating. Chess Glasses is for practice, studying positions and casual games where everyone knows.</p>
+    </details>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <span>Chess Glasses: Stockfish 19 + Gemini vision.</span>
+    <span>For practice and study, not for rated games.</span>
+  </div>
+</footer>
+
+<script src="session.js"></script>
+<script src="board.js"></script>
+<script>
+  const $ = (id) => document.getElementById(id);
+  ChessBoard.render($("demoBoard"), $("demoArrows"), "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3", { best: { from: "f1", to: "b5" }, coords: false });
+
+  CG.api("/api/status").then((r) => r.json()).then((s) => {
+    if (s.serverHasKey && s.sharedPerDay) {
+      $("freeNote").innerHTML = `Free: <b>${s.sharedPerDay} scans a day</b> with no sign-up, or unlimited with your own free key. No app to install.`;
+    } else if (!s.serverHasKey) {
+      $("freeNote").innerHTML = "Free with your own Gemini key, which takes two minutes to get. No app to install.";
+    }
+  }).catch(() => {});
+</script>
+</body>
+</html>

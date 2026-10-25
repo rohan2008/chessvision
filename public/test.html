@@ -3,15 +3,20 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Test Board</title>
+<title>Test Board · Chess Glasses</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
-  :root { --bg: #2b2620; --ink: #f1ece2; --muted: #b9b0a0; --ok: #7fd18b; --bad: #ff8a6b; --light: #eed9b6; --dark: #a97a52; --hl: rgba(255, 214, 0, .55); }
+  /* Always dark: this page is photographed off a screen, and a dark surround makes the board stand out. */
+  :root { --bg: #1d1a15; --ink: #f1ece2; --muted: #b9b0a0; --ok: #8fd3a8; --bad: #ff8a6b; --light: #eed9b6; --dark: #a97a52; --hl: rgba(214, 162, 79, .55); color-scheme: dark; }
   * { box-sizing: border-box; }
   html, body { height: 100%; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; display: flex; flex-direction: column; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.4 "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; display: flex; flex-direction: column; }
   header { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 16px; }
-  header strong { margin-right: 6px; }
-  button { font: inherit; padding: 7px 11px; border-radius: 8px; border: 1px solid #5a5146; background: #3a332b; color: var(--ink); cursor: pointer; }
+  .brand { font-family: "Fraunces", Georgia, serif; font-weight: 700; font-size: 18px; color: var(--ink); text-decoration: none; margin-right: 10px; }
+  .brand span { color: var(--muted); font-family: "IBM Plex Sans", sans-serif; font-weight: 500; font-size: 14px; margin-left: 6px; }
+  button { font: 500 14px "IBM Plex Sans", sans-serif; padding: 8px 12px; border-radius: 4px; border: 1px solid #4a4238; background: #2a251f; color: var(--ink); cursor: pointer; min-height: 38px; }
+  button:hover { border-color: #7a6f60; }
   button:disabled { opacity: .45; cursor: default; }
   #status { padding: 0 16px 8px; min-height: 1.4em; color: var(--muted); }
   #status.ok { color: var(--ok); } #status.bad { color: var(--bad); }
@@ -31,7 +36,7 @@
 </head>
 <body>
 <header>
-  <strong>Test board</strong>
+  <a class="brand" href="/">♞&#xFE0E; Chess Glasses<span>Test board</span></a>
   <button id="random">New random position</button>
   <button id="start">Starting position</button>
   <button id="mine" disabled>I played the suggested move</button>

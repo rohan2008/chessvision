@@ -12,23 +12,27 @@ let voiceOn = true;
 let myColor = "w";
 let lastSpeech = "";
 let lastResultAt = 0;
+let lastFen = null;
+let lastBest = null;
 
 // ---------- server state ----------
 CG.api("/api/status").then((r) => r.json()).then((s) => {
-  myColor = s.myColor;
-  $("myColor").value = s.myColor;
+  setColorUI(s.myColor);
   $("movetime").value = String(s.movetime);
   const own = s.provider === "gemini" && CG.key;
   const ready = own || s.serverHasKey;
   const pill = $("statusPill");
-  const left = !own && s.sharedPerDay ? ` · ${s.sharedLeft} free scans left` : "";
-  pill.textContent = ready ? `${s.model} · ready${left}` : "add your Gemini key";
-  pill.classList.toggle("bad", !ready);
+  pill.className = `chip ${ready ? "ok" : "bad"}`;
   if (!ready) {
+    pill.textContent = "Add a Gemini key";
     pill.style.cursor = "pointer";
     pill.onclick = () => (location.href = "/setup");
+  } else if (!own && s.sharedPerDay) {
+    pill.textContent = `${s.sharedLeft} free scans left today`;
+  } else {
+    pill.textContent = own ? "Ready · your key" : "Ready";
   }
-  renderBoard(s.fen);
+  drawBoard(s.fen);
 });
 
 const events = CG.events();
@@ -36,96 +40,74 @@ events.onmessage = (e) => show(JSON.parse(e.data));
 
 // ---------- result display ----------
 function fmtScore(l) {
-  if (l.mate != null) return l.mate > 0 ? `M${l.mate}` : `-M${-l.mate}`;
+  if (l.mate != null) return l.mate > 0 ? `M${l.mate}` : `−M${-l.mate}`;
   if (l.scoreCp == null) return "";
   const v = l.scoreCp / 100;
-  return (v > 0 ? "+" : "") + v.toFixed(2);
+  return (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(2);
+}
+
+function setState(text, cls = "") {
+  $("turnState").textContent = text;
+  $("turnState").className = `state ${cls}`;
+}
+
+function setLines(lines) {
+  $("lines").innerHTML = "";
+  for (const l of lines) {
+    const li = document.createElement("li");
+    li.innerHTML = `<span class="ev"></span><span class="pv"></span>`;
+    li.children[0].textContent = fmtScore(l);
+    li.children[1].textContent = l.san;
+    $("lines").append(li);
+  }
+  $("linesEmpty").hidden = lines.length > 0;
 }
 
 function show(r) {
   if (r.at <= lastResultAt) return;
   lastResultAt = r.at;
   const meta = [];
-  if (r.lastMove) meta.push(`Opponent played ${r.lastMove}`);
-  if (r.confidence) meta.push(`read confidence: ${r.confidence}`);
-  if (r.corrected) meta.push(`fixed ${r.corrected} misread square${r.corrected > 1 ? "s" : ""} using the game so far`);
-  if (r.visionMs) meta.push(`${(r.visionMs / 1000).toFixed(1)}s to read${r.visionModel ? ` (${r.visionModel})` : ""}`);
+  if (r.corrected) meta.push(`Fixed ${r.corrected} misread square${r.corrected > 1 ? "s" : ""} using the game so far`);
+  if (r.visionMs) meta.push(`read in ${(r.visionMs / 1000).toFixed(1)} s`);
+  if (r.confidence && r.confidence !== "high") meta.push(`${r.confidence} confidence`);
   if (r.notes) meta.push(r.notes);
+  $("meta").textContent = meta.join(" · ");
 
   if (!r.ok) {
+    setState("Couldn't use that photo", "bad");
     $("move").textContent = "—";
     $("speech").innerHTML = `<span class="error"></span>`;
     $("speech").firstChild.textContent = r.error;
-    $("meta").textContent = meta.join(" · ");
     return;
   }
   if (r.fen) {
     $("fen").value = r.fen;
-    renderBoard(r.fen, r.best);
+    drawBoard(r.fen, r.best);
   }
-  $("meta").textContent = meta.join(" · ");
-  if (r.gameOver || !r.yourTurn) {
-    $("move").textContent = r.gameOver ? "Game over" : "…";
-    $("speech").textContent = r.speech || r.message || "";
-    $("lines").innerHTML = "";
+  if (r.gameOver) {
+    setState("Game over");
+    $("move").textContent = r.speech?.startsWith("Checkmate") ? "Checkmate" : "Draw";
+    $("speech").textContent = r.speech || "";
+    setLines([]);
+  } else if (!r.yourTurn) {
+    setState("Opponent to move", "theirs");
+    $("move").textContent = r.lastMove || "…";
+    $("speech").textContent = r.lastMove ? `You played ${r.lastMove}. Take a photo after your opponent moves.` : r.message || "";
+    setLines([]);
   } else {
+    setState("Your move", "mine");
     $("move").textContent = r.best ? r.best.san : "—";
-    $("speech").textContent = r.speech;
-    $("lines").innerHTML = "";
-    for (const l of r.lines || []) {
-      const li = document.createElement("li");
-      li.textContent = `${fmtScore(l)}  ${l.san}`;
-      $("lines").append(li);
-    }
+    $("speech").textContent = r.lastMove && !r.unchanged ? `They played ${r.lastMove}. ${r.speech}` : r.speech;
+    setLines(r.lines || []);
   }
-  if (r.speech && !r.unchanged && !r.replay) say(r.speech);
+  if (r.speech && r.yourTurn && !r.unchanged && !r.replay) say(r.speech);
 }
 
 // ---------- board ----------
-const GLYPH = { k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟" };
-
-function renderBoard(fen, best) {
-  const board = $("board");
-  board.innerHTML = "";
-  const placement = (fen || "8/8/8/8/8/8/8/8").split(" ")[0];
-  const grid = placement.split("/").map((row) => row.replace(/\d/g, (n) => ".".repeat(+n)).split(""));
-  const flip = myColor === "b";
-  const files = "abcdefgh";
-  for (let vr = 0; vr < 8; vr++) {
-    for (let vf = 0; vf < 8; vf++) {
-      const r = flip ? 7 - vr : vr; // index into grid (0 = rank 8)
-      const f = flip ? 7 - vf : vf;
-      const sqName = files[f] + (8 - r);
-      const el = document.createElement("div");
-      el.className = "sq " + ((r + f) % 2 === 0 ? "l" : "d");
-      if (best && (sqName === best.from || sqName === best.to)) el.classList.add("hl");
-      const p = grid[r][f];
-      if (p !== ".") {
-        const s = document.createElement("span");
-        s.textContent = GLYPH[p.toLowerCase()] + "︎"; // text presentation, not emoji
-        s.className = p === p.toUpperCase() ? "pw" : "pb";
-        el.append(s);
-      }
-      if (vr === 7) el.insertAdjacentHTML("beforeend", `<span class="coord f">${files[f]}</span>`);
-      if (vf === 0) el.insertAdjacentHTML("beforeend", `<span class="coord r">${8 - r}</span>`);
-      board.append(el);
-    }
-  }
-  const svg = $("arrows");
-  svg.innerHTML = "";
-  if (best) {
-    const pos = (sq) => {
-      let x = files.indexOf(sq[0]) + 0.5, y = 8 - Number(sq[1]) + 0.5;
-      if (flip) { x = 8 - x; y = 8 - y; }
-      return [x, y];
-    };
-    const [x1, y1] = pos(best.from), [x2, y2] = pos(best.to);
-    const len = Math.hypot(x2 - x1, y2 - y1), ux = (x2 - x1) / len, uy = (y2 - y1) / len;
-    const hx = x2 - ux * 0.35, hy = y2 - uy * 0.35;
-    svg.innerHTML = `
-      <line x1="${x1}" y1="${y1}" x2="${hx}" y2="${hy}" stroke="#2f6f4fcc" stroke-width=".18" stroke-linecap="round"/>
-      <polygon points="${x2},${y2} ${hx - uy * 0.28},${hy + ux * 0.28} ${hx + uy * 0.28},${hy - ux * 0.28}" fill="#2f6f4fcc"/>`;
-  }
+function drawBoard(fen, best = null) {
+  lastFen = fen;
+  lastBest = best;
+  ChessBoard.render($("board"), $("arrows"), fen, { flip: myColor === "b", best });
 }
 
 // ---------- voice ----------
@@ -133,13 +115,11 @@ function say(text) {
   lastSpeech = text;
   if (!voiceOn || !("speechSynthesis" in window)) return;
   speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.rate = 1.0;
-  speechSynthesis.speak(u);
+  speechSynthesis.speak(new SpeechSynthesisUtterance(text));
 }
 $("btnSpeak").onclick = () => {
   voiceOn = !voiceOn;
-  $("btnSpeak").textContent = `Voice: ${voiceOn ? "on" : "off"}`;
+  $("btnSpeak").textContent = voiceOn ? "🔊 Voice on" : "🔇 Voice off";
   $("btnSpeak").setAttribute("aria-pressed", voiceOn);
 };
 $("btnRepeat").onclick = () => lastSpeech && say(lastSpeech);
@@ -168,7 +148,7 @@ $("btnCam").onclick = async () => {
   try {
     await useStream(await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1920 } } }));
   } catch (e) {
-    alert(`Camera unavailable: ${e.message}\n(Browsers only allow the camera on https or localhost - on a phone use "Photo…" instead.)`);
+    alert(`Camera unavailable: ${e.message}\n(Browsers only allow the camera on https or localhost. Use "Photo…" instead.)`);
   }
 };
 $("btnScreen").onclick = async () => {
@@ -207,6 +187,7 @@ async function scan(src = video, w = video.videoWidth, h = video.videoHeight) {
   busy = true;
   $("scanning").style.display = "block";
   $("btnScan").disabled = true;
+  setState("Reading the board…");
   try {
     const r = await CG.api("/api/scan", {
       method: "POST",
@@ -260,7 +241,7 @@ function tick() {
 }
 function setAuto(on) {
   autoOn = on;
-  $("btnAuto").textContent = `Auto-scan: ${on ? "on" : "off"}`;
+  $("btnAuto").textContent = `Auto-scan ${on ? "on" : "off"}`;
   $("btnAuto").setAttribute("aria-pressed", on);
   clearInterval(autoTimer);
   if (on) {
@@ -275,20 +256,27 @@ async function settings(body) {
   const r = await CG.api("/api/settings", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
   return r.json();
 }
-$("myColor").onchange = async () => {
-  myColor = $("myColor").value;
-  await settings({ myColor });
-  renderBoard($("fen").value);
-};
+function setColorUI(c) {
+  myColor = c;
+  for (const b of $("colorSeg").querySelectorAll("button")) b.setAttribute("aria-pressed", b.dataset.color === c);
+}
+for (const b of $("colorSeg").querySelectorAll("button")) {
+  b.onclick = async () => {
+    setColorUI(b.dataset.color);
+    await settings({ myColor });
+    drawBoard(lastFen, lastBest);
+  };
+}
 $("movetime").onchange = () => settings({ movetime: Number($("movetime").value) });
 $("btnNew").onclick = async () => {
-  await settings({ newGame: true, myColor: $("myColor").value });
+  await settings({ newGame: true, myColor });
   $("fen").value = "";
   $("move").textContent = "—";
-  $("speech").textContent = "New game. Scan the board when it's your move.";
+  setState("Waiting for your first photo");
+  $("speech").textContent = "New game. Take a photo when it's your move.";
   $("meta").textContent = "";
-  $("lines").innerHTML = "";
-  renderBoard(null);
+  setLines([]);
+  drawBoard(null);
 };
 $("btnFen").onclick = async () => {
   const fen = $("fen").value.trim();
@@ -297,4 +285,4 @@ $("btnFen").onclick = async () => {
   show(await r.json());
 };
 
-renderBoard(null);
+drawBoard(null);

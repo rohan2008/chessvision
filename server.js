@@ -202,7 +202,7 @@ function apiError(err) {
 }
 
 const STATIC = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png" };
-const PAGES = { "/": "index.html", "/test": "test.html", "/setup": "setup.html" };
+const PAGES = { "/": "home.html", "/play": "play.html", "/test": "test.html", "/setup": "setup.html" };
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
@@ -331,6 +331,12 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname === "/healthz") return send(res, 200, { ok: true });
 
+    // The live board used to live at "/": keep old links like /?speaker=1 working.
+    if (url.pathname === "/" && (url.searchParams.has("speaker") || url.searchParams.has("game"))) {
+      res.writeHead(302, { location: `/play${url.search}` });
+      return res.end();
+    }
+
     if (req.method === "GET") {
       const file = PAGES[url.pathname] ?? url.pathname.slice(1);
       const full = path.join(here, "public", path.normalize(file));
@@ -357,7 +363,7 @@ server.listen(PORT, "0.0.0.0", () => {
     .filter((i) => i.family === "IPv4" && !i.internal && !i.address.startsWith("169.254."))
     .map((i) => `http://${i.address}:${PORT}`);
   console.log(`Chess Glasses running:\n  this computer: http://localhost:${PORT}`);
-  for (const u of lan) console.log(`  phone (same Wi-Fi): ${u}/?speaker=1`);
+  for (const u of lan) console.log(`  phone (same Wi-Fi): ${u}/play?speaker=1`);
   console.log(`  board reader: ${visionInfo.provider} (${visionInfo.model})`);
   if (!visionInfo.hasKey) console.log("  no server key: each user adds their own Gemini key on /setup");
 });

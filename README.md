@@ -30,7 +30,7 @@ npm install
 npm start
 ```
 
-Open http://localhost:3000. The terminal also prints a `http://<your-LAN-IP>:3000/?speaker=1` address. Open that on your phone for a big-text page that speaks every move.
+Open http://localhost:3000. That page explains the app; **/setup** walks through setup, **/play** is the live board, and **/test** is a test board. The terminal also prints a `http://<your-LAN-IP>:3000/play?speaker=1` address. Open that on your phone for a big-text page that speaks every move.
 
 **Free-tier limits:** Google caps free requests per minute and per day, and the caps change over time. You can see yours in AI Studio. Free models are also often "experiencing high demand". The app tries `gemini-3.8-flash`, then `gemini-3.5-flash`, then `gemini-3.5-flash-lite`. Each attempt has a 40-second timeout, and a model that fails sits out for 2 minutes. Expect roughly 10 to 20 seconds per scan, longer when a model is overloaded. Each scan is one request. Auto-scan only fires when the board view changes, and waits at least 10 seconds between scans by default. If you hit the limit, the app tells you; raise **min gap** or wait. On the free tier, Google may use what you send to improve its products. The app sends only the board photo.
 
@@ -71,7 +71,7 @@ The `/api/frame` reply always has a `say` field that's worth speaking. It covers
 1. On the computer running the app, sign in to WhatsApp Desktop or Messenger. Use a second account, or a contact who leaves the call open on that computer.
 2. From your phone, start a **video call** to that account. Then switch the call's camera to the glasses: double-press the capture button on the glasses, or use the camera-switch control in the call.
 3. Answer the call on the computer. In Chess Glasses, click **Capture a window**, pick the call window, and turn on **Auto-scan**.
-4. On your phone, open the `/?speaker=1` page and tap once to enable voice. Some phones duck browser audio during a call. If yours does, leave **Voice** on in the computer's page and wear earbuds, or simply glance at the phone.
+4. On your phone, open the `/play?speaker=1` page and tap once to enable voice. Some phones duck browser audio during a call. If yours does, leave **Voice** on in the computer's page and wear earbuds, or simply glance at the phone.
 
 ### 2. Photo mode (simplest)
 Say "Hey Meta, take a photo". The photo syncs to your phone through the Meta AI app. Open the app's page on your phone, tap **Photo…** and pick the image. This is slower, but needs no setup.
