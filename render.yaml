@@ -1,5 +1,5 @@
 # Render Blueprint for the API: New → Blueprint → pick this repo. Free plan sleeps when idle (first request ~30-60s).
-# The name gives the address https://chessvision.onrender.com, which public/config.js points the
+# The name gives the address https://chessvision-6s6i.onrender.com, which public/config.js points the
 # GitHub Pages site at. If Render gives a different address, update config.js to match.
 services:
   - type: web

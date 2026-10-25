@@ -120,7 +120,7 @@ Open the **Test board** on a computer. It shows a position full-screen. Point an
 
 The site is split in two:
 - **Website** (`public/`): published by GitHub Pages from this repo, `rohan2008/chessvision`. Your user site (`rohan2008.github.io`) already has the custom domain rohannamdhari.com, so this project's Pages site appears at **rohannamdhari.com/chessvision/** with no DNS changes. The workflow in `.github/workflows/pages.yml` deploys `public/` on every push to `main`.
-- **API server** (board reading, Stockfish, game tracking, the Shortcut's photo uploads): GitHub Pages can't run it, so it runs on [Render](https://render.com) (free) as `chessvision.onrender.com`. `public/config.js` sends the Pages site's requests there. When the same pages are served by the Node server (on your PC or on Render), they talk to that server instead.
+- **API server** (board reading, Stockfish, game tracking, the Shortcut's photo uploads): GitHub Pages can't run it, so it runs on [Render](https://render.com) (free) at `chessvision-6s6i.onrender.com`. `public/config.js` sends the Pages site's requests there. When the same pages are served by the Node server (on your PC or on Render), they talk to that server instead.
 
 Everyone gets a private game. For board reading, the `/setup` page gives each person two choices:
 - **Free shared key (default):** visitors use your Gemini key with no setup. Each person (by IP address) gets `SHARED_DAILY_PER_USER` scans a day (30), and everyone together gets `SHARED_DAILY_TOTAL` (500). Scans Google was too busy to read don't count. When a limit is reached, the app says so and points to the setup page. The counts reset at midnight UTC, and also when the server restarts.
@@ -131,7 +131,7 @@ Because the shared key is yours, all shared scans use your free Google quota, an
 1. **GitHub:** create the repository `rohan2008/chessvision` and push this folder to it. `.gitignore` already keeps `.env` (your key) and `node_modules` out.
 2. **GitHub Pages:** in the repo, go to **Settings → Pages** and set **Source** to **GitHub Actions**. The next push, or re-running the workflow, publishes the site to rohannamdhari.com/chessvision/.
 3. **Render:** sign in with GitHub. Choose **New → Blueprint**, pick the repo, and click **Apply**. When it asks for `GEMINI_API_KEY`, paste your key to offer free shared scans, or leave it empty. `render.yaml` sets up everything else.
-4. **Check the API address.** If Render's address isn't exactly `https://chessvision.onrender.com` (it adds a suffix when a name is taken), put the real address in `public/config.js` and push.
+4. **Check the API address.** If Render's address isn't exactly `https://chessvision-6s6i.onrender.com` (it adds a suffix when a name is taken), put the real address in `public/config.js` and push.
 5. **Share** `https://rohannamdhari.com/chessvision/`.
 
 **Optional: a one-tap Shortcut for everyone.**
