@@ -15,6 +15,11 @@ let lastResultAt = 0;
 let lastFen = null;
 let lastBest = null;
 
+const store = {
+  get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
+};
+
 // ---------- server state ----------
 CG.api("/api/status").then((r) => r.json()).then((s) => {
   setColorUI(s.myColor);
@@ -26,13 +31,16 @@ CG.api("/api/status").then((r) => r.json()).then((s) => {
   if (!ready) {
     pill.textContent = "Add a Gemini key";
     pill.style.cursor = "pointer";
-    pill.onclick = () => (location.href = "/setup");
+    pill.onclick = () => (location.href = "setup.html");
   } else if (!own && s.sharedPerDay) {
     pill.textContent = `${s.sharedLeft} free scans left today`;
   } else {
     pill.textContent = own ? "Ready · your key" : "Ready";
   }
   drawBoard(s.fen);
+}).catch(() => {
+  $("statusPill").className = "chip bad";
+  $("statusPill").textContent = "Server waking up…";
 });
 
 const events = CG.events();
@@ -49,6 +57,13 @@ function fmtScore(l) {
 function setState(text, cls = "") {
   $("turnState").textContent = text;
   $("turnState").className = `state ${cls}`;
+}
+
+// The move also shows over the camera preview, so on a phone you see it without scrolling.
+function setOverlay(move, text) {
+  $("overlay").hidden = !move && !text;
+  $("oMove").textContent = move || "";
+  $("oText").textContent = text || "";
 }
 
 function setLines(lines) {
@@ -74,10 +89,11 @@ function show(r) {
   $("meta").textContent = meta.join(" · ");
 
   if (!r.ok) {
-    setState("Couldn't use that photo", "bad");
+    setState("Couldn't use that picture", "bad");
     $("move").textContent = "—";
     $("speech").innerHTML = `<span class="error"></span>`;
     $("speech").firstChild.textContent = r.error;
+    setOverlay("", r.error);
     return;
   }
   if (r.fen) {
@@ -88,16 +104,19 @@ function show(r) {
     setState("Game over");
     $("move").textContent = r.speech?.startsWith("Checkmate") ? "Checkmate" : "Draw";
     $("speech").textContent = r.speech || "";
+    setOverlay($("move").textContent, "");
     setLines([]);
   } else if (!r.yourTurn) {
     setState("Opponent to move", "theirs");
     $("move").textContent = r.lastMove || "…";
-    $("speech").textContent = r.lastMove ? `You played ${r.lastMove}. Take a photo after your opponent moves.` : r.message || "";
+    $("speech").textContent = r.lastMove ? `You played ${r.lastMove}. Scan again after your opponent moves.` : r.message || "";
+    setOverlay("", "Waiting for your opponent");
     setLines([]);
   } else {
     setState("Your move", "mine");
     $("move").textContent = r.best ? r.best.san : "—";
     $("speech").textContent = r.lastMove && !r.unchanged ? `They played ${r.lastMove}. ${r.speech}` : r.speech;
+    setOverlay(r.best?.san, r.speech);
     setLines(r.lines || []);
   }
   if (r.speech && r.yourTurn && !r.unchanged && !r.replay) say(r.speech);
@@ -132,9 +151,92 @@ if (speakerMode && "speechSynthesis" in window) {
   };
 }
 
-// ---------- sources ----------
-async function useStream(s) {
+// ---------- camera choice ----------
+// Values: "env" / "user" (phone back / front), "dev:<deviceId>" (a specific webcam), "photo", "screen", "glasses".
+const sourceSel = $("source");
+
+function hint(title, text) {
+  $("videoHint").innerHTML = `<b></b><span></span>`;
+  $("videoHint").firstChild.textContent = title;
+  $("videoHint").lastChild.textContent = text;
+  $("videoHint").hidden = false;
+}
+
+function stopStream() {
   stream?.getTracks().forEach((t) => t.stop());
+  stream = null;
+  video.srcObject = null;
+  video.hidden = true;
+  setAuto(false);
+  $("btnScan").disabled = true;
+  $("btnAuto").disabled = true;
+}
+
+// Once camera permission is granted, list the real cameras by name (useful on laptops with several).
+async function listCameras() {
+  if (!navigator.mediaDevices?.enumerateDevices) return;
+  const cams = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "videoinput" && d.label);
+  if (!cams.length) return;
+  const group = $("camGroup");
+  group.querySelectorAll('option[value^="dev:"]').forEach((o) => o.remove());
+  for (const c of cams) {
+    const o = document.createElement("option");
+    o.value = `dev:${c.deviceId}`;
+    o.textContent = c.label;
+    group.append(o);
+  }
+  const saved = store.get("cv-source");
+  if (saved && [...sourceSel.options].some((o) => o.value === saved)) sourceSel.value = saved;
+}
+
+function updateStartButton() {
+  const v = sourceSel.value;
+  $("glassesBox").hidden = v !== "glasses";
+  $("btnStart").hidden = v === "glasses";
+  $("camActions").hidden = v === "glasses";
+  $("tip").hidden = v === "glasses" || v === "photo";
+  $("btnStart").textContent = v === "photo" ? "Choose photo" : v === "screen" ? "Choose window" : stream ? "Restart camera" : "Start camera";
+  if (v === "glasses") {
+    stopStream();
+    still.hidden = true;
+    hint("Meta glasses", "Take photos with your glasses. The moves will appear here.");
+  }
+}
+
+sourceSel.onchange = () => {
+  store.set("cv-source", sourceSel.value);
+  updateStartButton();
+};
+
+async function startSource() {
+  const v = sourceSel.value;
+  if (v === "photo") return $("file").click();
+  try {
+    let s;
+    if (v === "screen") {
+      s = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 10 }, audio: false });
+    } else {
+      const video = v.startsWith("dev:")
+        ? { deviceId: { exact: v.slice(4) }, width: { ideal: 1920 } }
+        : { facingMode: v === "user" ? "user" : "environment", width: { ideal: 1920 } };
+      s = await navigator.mediaDevices.getUserMedia({ video, audio: false });
+    }
+    useStream(s);
+    if (v !== "screen") listCameras();
+  } catch (e) {
+    if (e.name === "NotAllowedError") {
+      hint("Camera blocked", "Allow camera access for this site in your browser settings, then press Start again.");
+    } else if (!navigator.mediaDevices) {
+      hint("No camera access here", "Cameras only work on https pages or on this computer. Choose “A photo…” instead.");
+    } else {
+      hint("Couldn't start that camera", e.message);
+    }
+  }
+}
+$("btnStart").onclick = startSource;
+
+function useStream(s) {
+  stopStream();
   stream = s;
   video.srcObject = s;
   video.hidden = false;
@@ -142,35 +244,34 @@ async function useStream(s) {
   $("videoHint").hidden = true;
   $("btnScan").disabled = false;
   $("btnAuto").disabled = false;
-  s.getVideoTracks()[0].addEventListener("ended", () => setAuto(false));
+  updateStartButton();
+  s.getVideoTracks()[0].addEventListener("ended", () => {
+    stopStream();
+    updateStartButton();
+    hint("Camera stopped", "Press Start to use it again.");
+  });
 }
-$("btnCam").onclick = async () => {
-  try {
-    await useStream(await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1920 } } }));
-  } catch (e) {
-    alert(`Camera unavailable: ${e.message}\n(Browsers only allow the camera on https or localhost. Use "Photo…" instead.)`);
-  }
-};
-$("btnScreen").onclick = async () => {
-  try {
-    await useStream(await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 10 }, audio: false }));
-  } catch (e) {
-    if (e.name !== "NotAllowedError") alert(`Window capture failed: ${e.message}`);
-  }
-};
+
 $("file").onchange = async () => {
   const f = $("file").files[0];
   if (!f) return;
+  stopStream();
   const img = new Image();
   img.src = URL.createObjectURL(f);
   await img.decode();
   still.src = img.src;
   still.hidden = false;
-  video.hidden = true;
   $("videoHint").hidden = true;
   $("file").value = "";
   scan(img, img.naturalWidth, img.naturalHeight);
 };
+
+// Restore the last camera choice; list named cameras if permission was already granted earlier.
+{
+  const saved = store.get("cv-source");
+  if (saved && !saved.startsWith("dev:") && [...sourceSel.options].some((o) => o.value === saved)) sourceSel.value = saved;
+  listCameras().finally(updateStartButton);
+}
 
 // ---------- scanning ----------
 function frameToJpeg(src, w, h, maxSide = 1400) {
@@ -196,7 +297,7 @@ async function scan(src = video, w = video.videoWidth, h = video.videoHeight) {
     });
     show(await r.json()); // also arrives over SSE; show() ignores the duplicate
   } catch (e) {
-    show({ at: Date.now(), ok: false, error: `Network error: ${e.message}` });
+    show({ at: Date.now(), ok: false, error: `Couldn't reach the server: ${e.message}` });
   } finally {
     busy = false;
     $("scanning").style.display = "none";
@@ -272,9 +373,10 @@ $("btnNew").onclick = async () => {
   await settings({ newGame: true, myColor });
   $("fen").value = "";
   $("move").textContent = "—";
-  setState("Waiting for your first photo");
-  $("speech").textContent = "New game. Take a photo when it's your move.";
+  setState("Waiting for a scan");
+  $("speech").textContent = "New game. Scan the board when it's your move.";
   $("meta").textContent = "";
+  setOverlay("", "");
   setLines([]);
   drawBoard(null);
 };

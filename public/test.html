@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Test Board · Chess Glasses</title>
+<title>Test Board · Chess Vision</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
@@ -36,17 +36,18 @@
 </head>
 <body>
 <header>
-  <a class="brand" href="/">♞&#xFE0E; Chess Glasses<span>Test board</span></a>
+  <a class="brand" href="./">♞&#xFE0E; Chess Vision<span>Test board</span></a>
   <button id="random">New random position</button>
   <button id="start">Starting position</button>
   <button id="mine" disabled>I played the suggested move</button>
   <button id="theirs">Opponent makes a move</button>
 </header>
-<div id="status">Photograph this board with your iPhone or glasses, then run the Chess move shortcut.</div>
+<div id="status">Point a camera at this board and scan it: your phone on the Play page, or your glasses with the Shortcut.</div>
 <main><div class="board" id="board"></div></main>
+<script src="config.js"></script>
 <script src="session.js"></script>
 <script type="module">
-import { Chess } from "/vendor/chess.js";
+import { Chess } from "https://cdn.jsdelivr.net/npm/chess.js@1.4.0/dist/esm/chess.js";
 
 const $ = (id) => document.getElementById(id);
 let game = new Chess();
@@ -96,7 +97,7 @@ async function newGame(chess) {
   $("mine").disabled = true;
   await CG.api("/api/settings", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ newGame: true }) });
   render();
-  status(`New position, ${myColor === "w" ? "White" : "Black"} (you) to move. Photograph it and run the shortcut.`);
+  status(`New position, ${myColor === "w" ? "White" : "Black"} (you) to move. Point a camera at it and scan.`);
 }
 
 // A plausible-looking middlegame: random legal moves from the start, ending on your turn.
@@ -134,7 +135,7 @@ $("mine").onclick = () => {
   const m = play(lastBest);
   lastBest = null;
   $("mine").disabled = true;
-  status(`You played ${m.san}. Photograph again: it should say "Waiting for your opponent". Then tap "Opponent makes a move".`);
+  status(`You played ${m.san}. Scan again: it should say "Waiting for your opponent". Then tap "Opponent makes a move".`);
 };
 $("theirs").onclick = () => {
   if (game.turn() === myColor) {
@@ -143,7 +144,7 @@ $("theirs").onclick = () => {
   }
   const moves = game.moves({ verbose: true });
   const m = play(moves[Math.floor(Math.random() * moves.length)]);
-  status(`Opponent played ${m.san}. Photograph again: it should say "They played ${m.san}" and your next move.`);
+  status(`Opponent played ${m.san}. Scan again: it should say "They played ${m.san}" and your next move.`);
 };
 
 // Every scan result is pushed here; check it against the board on screen.

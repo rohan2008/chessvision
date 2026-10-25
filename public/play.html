@@ -3,11 +3,31 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Live Board · Chess Glasses</title>
+<title>Play · Chess Vision</title>
 <link rel="stylesheet" href="site.css">
 <style>
-  .layout { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, .75fr); gap: 32px; padding-top: 28px; align-items: start; }
-  .game { min-width: 0; }
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; padding-top: 24px; align-items: start; }
+  .col { display: grid; gap: 16px; min-width: 0; }
+
+  /* camera */
+  .cam-head { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
+  .cam-head label.field { flex: 1 1 220px; }
+  .cam-head select { width: 100%; }
+  .video-wrap { position: relative; background: #0d0c0a; border-radius: 3px; overflow: hidden; aspect-ratio: 4/3; display: grid; place-items: center; margin-top: 12px; }
+  video, .video-wrap img { width: 100%; height: 100%; object-fit: contain; }
+  .video-wrap .hint { position: absolute; color: #c9c1b3; font-size: 15px; padding: 24px; text-align: center; max-width: 34ch; }
+  .video-wrap .hint b { color: #fff; font-family: var(--serif); font-size: 20px; display: block; margin-bottom: 6px; }
+  .scanning { position: absolute; top: 10px; left: 10px; background: var(--accent); color: var(--accent-ink); font-size: 13px; font-weight: 600; padding: 5px 11px; border-radius: 999px; display: none; }
+  .overlay { position: absolute; left: 10px; right: 10px; bottom: 10px; background: #000b; color: #fff; border-radius: 4px; padding: 10px 14px; display: flex; align-items: baseline; gap: 12px; backdrop-filter: blur(4px); }
+  .overlay .o-move { font-family: var(--serif); font-weight: 700; font-size: 34px; line-height: 1; }
+  .overlay .o-text { font-size: 14px; opacity: .85; }
+  .cam-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-top: 12px; }
+  .cam-actions .primary { min-width: 140px; justify-content: center; }
+  .tip { font-size: 14px; color: var(--muted); margin: 10px 0 0; }
+  .glasses-box { margin-top: 12px; border-left: 3px solid var(--brass); padding: 2px 0 2px 14px; }
+  .glasses-box p { margin: 6px 0; }
+
+  /* result */
   .state { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .state::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
   .state.mine { color: var(--accent); } .state.mine::before { background: var(--accent); animation: pulse 1.8s ease-in-out infinite; }
@@ -15,14 +35,13 @@
   .state.bad { color: var(--warn); } .state.bad::before { background: var(--warn); }
   @keyframes pulse { 50% { opacity: .35; } }
   @media (prefers-reduced-motion: reduce) { .state.mine::before { animation: none; } }
-  .move { font-family: var(--serif); font-weight: 700; font-size: clamp(56px, 9vw, 92px); line-height: 1; margin: 10px 0 8px; letter-spacing: -0.02em; }
-  .speech { font-size: 20px; min-height: 1.5em; }
+  .move { font-family: var(--serif); font-weight: 700; font-size: clamp(52px, 7vw, 84px); line-height: 1; margin: 8px 0 6px; letter-spacing: -0.02em; }
+  .speech { font-size: 19px; min-height: 1.5em; }
   .speech .error { color: var(--warn); }
-  .meta { font-size: 13px; color: var(--muted); margin-top: 6px; min-height: 1.2em; }
-  .game .board-frame { max-width: 520px; margin-top: 22px; }
-  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+  .meta { font-size: 13px; color: var(--muted); margin-top: 4px; min-height: 1.2em; }
+  .result .board-frame { margin-top: 16px; max-width: 520px; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
 
-  .side { display: grid; gap: 16px; min-width: 0; }
   .lines { list-style: none; margin: 0; padding: 0; font-family: var(--mono); font-size: 14px; }
   .lines li { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
   .lines li:first-child { border-top: 0; }
@@ -31,26 +50,19 @@
   .empty { color: var(--muted); font-size: 14px; margin: 0; }
   .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
   .row + .row { margin-top: 12px; }
-
-  .video-wrap { position: relative; background: #000; border-radius: 3px; overflow: hidden; aspect-ratio: 16/10; display: grid; place-items: center; margin: 12px 0; }
-  video, .video-wrap img { width: 100%; height: 100%; object-fit: contain; }
-  .video-wrap .hint { position: absolute; color: #bbb; font-size: 14px; padding: 18px; text-align: center; }
-  .scanning { position: absolute; top: 8px; left: 8px; background: var(--accent); color: var(--accent-ink); font-size: 12px; font-weight: 600; padding: 4px 9px; border-radius: 999px; display: none; }
   details.card > summary { font-family: var(--serif); font-size: 18px; }
-  details.card[open] > summary { margin-bottom: 4px; }
   details.card p { margin: 6px 0 0; }
 
   .tap { position: fixed; inset: 0; background: #000d; color: #fff; display: none; place-items: center; text-align: center; padding: 24px; z-index: 20; font-family: var(--serif); font-size: 26px; }
   .tap small { display: block; font-family: var(--sans); font-size: 15px; opacity: .75; margin-top: 8px; }
 
   /* Speaker view: just the move, big, for a phone propped up next to the board. */
-  .speaker .topbar, .speaker .side, .speaker .footer, .speaker .capture-only { display: none !important; }
-  .speaker .layout { grid-template-columns: minmax(0, 1fr); padding-top: 24px; }
+  .speaker .topbar, .speaker .camera-col, .speaker .extras, .speaker .footer, .speaker .capture-only { display: none !important; }
+  .speaker .layout { grid-template-columns: minmax(0, 1fr); }
   .speaker .move { font-size: clamp(72px, 22vw, 140px); }
-  .speaker .game .board-frame { max-width: 420px; }
 
-  @media (max-width: 860px) {
-    .layout { grid-template-columns: minmax(0, 1fr); gap: 24px; padding-top: 18px; }
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: minmax(0, 1fr); gap: 20px; padding-top: 16px; }
   }
 </style>
 </head>
@@ -59,94 +71,117 @@
 
 <header class="topbar">
   <div class="wrap">
-    <a class="brand" href="/"><span class="knight">♞&#xFE0E;</span>Chess Glasses</a>
+    <a class="brand" href="./"><span class="knight">♞&#xFE0E;</span>Chess Vision</a>
     <nav class="nav">
-      <a href="/play" aria-current="page">Live board</a>
-      <a href="/setup">Set up</a>
-      <a href="/test">Test board</a>
+      <a href="play.html" aria-current="page">Play</a>
+      <a href="setup.html">Settings</a>
+      <a href="test.html">Test board</a>
       <span class="chip" id="statusPill">Connecting…</span>
     </nav>
   </div>
 </header>
 
 <main class="wrap layout">
-  <section class="game">
-    <span class="state" id="turnState">Waiting for your first photo</span>
-    <div class="move" id="move">—</div>
-    <div class="speech" id="speech">Take a photo of the board with your glasses and run your Shortcut, or scan from this device.</div>
-    <div class="meta" id="meta"></div>
-    <div class="board-frame">
-      <div class="board-wrap">
-        <div class="board" id="board"></div>
-        <svg class="arrows" id="arrows" viewBox="0 0 8 8"></svg>
-      </div>
-    </div>
-    <div class="actions">
-      <button id="btnSpeak" aria-pressed="true">🔊 Voice on</button>
-      <button id="btnRepeat">Repeat</button>
-      <a class="btn ghost capture-only" href="?speaker=1" target="_blank" id="speakerLink">Speaker view ↗</a>
-    </div>
-  </section>
-
-  <aside class="side">
-    <div class="card">
-      <h3>Engine's top lines</h3>
-      <ol class="lines" id="lines"></ol>
-      <p class="empty" id="linesEmpty">Lines appear when it's your move.</p>
-    </div>
-
-    <div class="card">
-      <h3>This game</h3>
-      <div class="row">
-        <div class="field" style="display:grid;gap:4px">
-          <span class="small muted">I'm playing</span>
-          <div class="seg" id="colorSeg">
-            <button data-color="w" aria-pressed="true">White</button>
-            <button data-color="b" aria-pressed="false">Black</button>
-          </div>
-        </div>
-        <label class="field">Engine thinks for
-          <select id="movetime"><option value="500">0.5 s</option><option value="1500" selected>1.5 s</option><option value="3000">3 s</option><option value="6000">6 s</option></select>
+  <div class="col camera-col">
+    <section class="card">
+      <div class="cam-head">
+        <label class="field">Camera
+          <select id="source">
+            <optgroup label="Cameras" id="camGroup">
+              <option value="env">Back camera</option>
+              <option value="user">Front camera / webcam</option>
+            </optgroup>
+            <optgroup label="Other">
+              <option value="photo">A photo…</option>
+              <option value="screen">Share a window or screen</option>
+              <option value="glasses">Meta glasses</option>
+            </optgroup>
+          </select>
         </label>
+        <button class="primary" id="btnStart">Start camera</button>
       </div>
-      <div class="row">
-        <button id="btnNew">Start a new game</button>
-      </div>
-    </div>
+      <input id="file" type="file" accept="image/*" capture="environment" hidden>
 
-    <details class="card capture-only" id="scanPanel">
-      <summary>Scan from this device</summary>
-      <p class="small muted">No glasses handy? Use this device's camera, a photo, or (on a computer) the window of a video call from your glasses.</p>
-      <div class="row" style="margin-top:12px">
-        <button id="btnCam">Camera</button>
-        <label class="btn" for="file">Photo…</label>
-        <input id="file" type="file" accept="image/*" capture="environment" hidden>
-        <button id="btnScreen" title="Pick the WhatsApp or Messenger video-call window that shows your glasses' view">Window</button>
-      </div>
-      <div class="video-wrap">
-        <video id="video" playsinline muted autoplay></video>
+      <div class="video-wrap" id="videoWrap">
+        <video id="video" playsinline muted autoplay hidden></video>
         <img id="still" alt="" hidden>
-        <div class="hint" id="videoHint">Pick a source above.</div>
+        <div class="hint" id="videoHint"><b>Point a camera at the board</b>Pick a camera above and press Start. Get all 64 squares in view.</div>
         <div class="scanning" id="scanning">Reading board…</div>
+        <div class="overlay" id="overlay" hidden><span class="o-move" id="oMove"></span><span class="o-text" id="oText"></span></div>
       </div>
-      <div class="row">
-        <button class="primary" id="btnScan" disabled>Scan now</button>
+
+      <div class="cam-actions" id="camActions">
+        <button class="primary" id="btnScan" disabled>Scan board</button>
         <button id="btnAuto" aria-pressed="false" disabled>Auto-scan off</button>
         <label class="field">Wait between scans
           <select id="gap"><option value="3">3 s</option><option value="5">5 s</option><option value="10" selected>10 s</option><option value="20">20 s</option></select>
         </label>
       </div>
-    </details>
+      <p class="tip" id="tip">Auto-scan reads the board whenever it changes and then holds still, so it won't scan your hand mid-move.</p>
 
-    <details class="card capture-only">
-      <summary>Fix the position</summary>
-      <p class="small muted">If a square was misread, edit the position (FEN) and analyze it. Tracking carries on from there.</p>
-      <div class="row" style="margin-top:12px;flex-wrap:nowrap">
-        <input type="text" class="mono" id="fen" spellcheck="false" style="flex:1;min-width:0" placeholder="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1">
-        <button id="btnFen">Analyze</button>
+      <div class="glasses-box" id="glassesBox" hidden>
+        <p><b>Using Meta glasses?</b> They can't stream straight to a web page. Instead:</p>
+        <p>• <b>iPhone:</b> add the Shortcut from <a href="setup.html#glasses" id="glassesSetupLink">Settings</a>, then say “Hey Meta, take a photo” and tap the back of your phone. Moves show up here too.</p>
+        <p>• <b>Computer:</b> video-call yourself from the glasses (WhatsApp or Messenger), then choose <i>Share a window or screen</i> and pick the call.</p>
       </div>
-    </details>
-  </aside>
+    </section>
+  </div>
+
+  <div class="col">
+    <section class="result">
+      <span class="state" id="turnState">Waiting for a scan</span>
+      <div class="move" id="move">—</div>
+      <div class="speech" id="speech">Start a camera and scan the board when it's your move.</div>
+      <div class="meta" id="meta"></div>
+      <div class="board-frame">
+        <div class="board-wrap">
+          <div class="board" id="board"></div>
+          <svg class="arrows" id="arrows" viewBox="0 0 8 8"></svg>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="btnSpeak" aria-pressed="true">🔊 Voice on</button>
+        <button id="btnRepeat">Repeat</button>
+        <a class="btn ghost capture-only" href="?speaker=1" target="_blank">Speaker view ↗</a>
+      </div>
+    </section>
+
+    <div class="extras col">
+      <div class="card">
+        <h3>Engine's top lines</h3>
+        <ol class="lines" id="lines"></ol>
+        <p class="empty" id="linesEmpty">Lines appear when it's your move.</p>
+      </div>
+
+      <div class="card">
+        <h3>This game</h3>
+        <div class="row">
+          <div style="display:grid;gap:4px">
+            <span class="small muted">I'm playing</span>
+            <div class="seg" id="colorSeg">
+              <button data-color="w" aria-pressed="true">White</button>
+              <button data-color="b" aria-pressed="false">Black</button>
+            </div>
+          </div>
+          <label class="field">Engine thinks for
+            <select id="movetime"><option value="500">0.5 s</option><option value="1500" selected>1.5 s</option><option value="3000">3 s</option><option value="6000">6 s</option></select>
+          </label>
+        </div>
+        <div class="row">
+          <button id="btnNew">Start a new game</button>
+        </div>
+      </div>
+
+      <details class="card capture-only">
+        <summary>Fix the position</summary>
+        <p class="small muted">If a square was misread, edit the position (FEN) and analyze it. Tracking carries on from there.</p>
+        <div class="row" style="margin-top:12px;flex-wrap:nowrap">
+          <input type="text" class="mono" id="fen" spellcheck="false" style="flex:1;min-width:0" placeholder="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1">
+          <button id="btnFen">Analyze</button>
+        </div>
+      </details>
+    </div>
+  </div>
 </main>
 
 <footer class="footer">
@@ -156,6 +191,7 @@
   </div>
 </footer>
 
+<script src="config.js"></script>
 <script src="session.js"></script>
 <script src="board.js"></script>
 <script src="app.js"></script>

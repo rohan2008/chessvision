@@ -1,7 +1,7 @@
 {
-  "name": "chess-glasses",
+  "name": "chess-vision",
   "version": "1.0.0",
-  "description": "Scan a chess board through Meta glasses and hear the best move",
+  "description": "Point any camera at a chess board and get the best move",
   "main": "index.js",
   "scripts": {
     "test": "node --test test.js",

@@ -24,14 +24,16 @@
     get key() { return store.get("cg-key") || ""; },
     setKey(k) { store.set("cg-key", (k || "").trim()); },
     newGameId() { store.set("cg-game", newId()); return store.get("cg-game"); },
-    // fetch() with the game id and key attached.
+    // The API server ("" = same server as this page; see config.js).
+    apiBase: (window.CG_API_BASE || "").replace(/\/$/, ""),
+    // fetch() to the API with the game id and key attached.
     api(path, opts = {}) {
       const headers = { ...(opts.headers || {}), "x-game-id": this.gameId };
       if (this.key) headers["x-gemini-key"] = this.key;
-      return fetch(path, { ...opts, headers });
+      return fetch(this.apiBase + path, { ...opts, headers });
     },
     events() {
-      return new EventSource(`/api/events?game=${encodeURIComponent(this.gameId)}`);
+      return new EventSource(`${this.apiBase}/api/events?game=${encodeURIComponent(this.gameId)}`);
     },
   };
 })();

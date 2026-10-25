@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Set Up · Chess Glasses</title>
+<title>Settings · Chess Vision</title>
 <link rel="stylesheet" href="site.css">
 <style>
   .intro { padding: 40px 0 8px; max-width: 640px; }
@@ -42,6 +42,8 @@
   details.manual { margin-top: 6px; }
   details.manual > summary { font-weight: 600; }
   .callout { border-left: 3px solid var(--brass); padding: 4px 0 4px 14px; margin: 14px 0 0; }
+  h3.sub { font-family: var(--sans); font-size: 13px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 22px 0 6px; }
+  .step h2 .tag { font-family: var(--sans); font-size: 12px; vertical-align: middle; }
   .callout b { font-family: var(--serif); font-weight: 600; }
 
   @media (max-width: 860px) {
@@ -57,37 +59,36 @@
 <body>
 <header class="topbar">
   <div class="wrap">
-    <a class="brand" href="/"><span class="knight">♞&#xFE0E;</span>Chess Glasses</a>
+    <a class="brand" href="./"><span class="knight">♞&#xFE0E;</span>Chess Vision</a>
     <nav class="nav">
-      <a href="/play" id="navPlay">Live board</a>
-      <a href="/setup" aria-current="page">Set up</a>
-      <a href="/test" id="navTest">Test board</a>
+      <a href="play.html" id="navPlay">Play</a>
+      <a href="setup.html" aria-current="page">Settings</a>
+      <a href="test.html" id="navTest">Test board</a>
     </nav>
   </div>
 </header>
 
 <main class="wrap">
   <div class="intro">
-    <span class="eyebrow">About 5 minutes on your iPhone</span>
-    <h1>Set up Chess Glasses</h1>
-    <p>Once this is done, you'll just say “Hey Meta, take a photo” and tap the back of your phone to hear the best move.</p>
+    <span class="eyebrow">Optional</span>
+    <h1>Settings</h1>
+    <p>Chess Vision works straight away on the <a href="play.html">Play</a> page. Here you can choose how pictures are read, set your colour, and connect Meta glasses.</p>
   </div>
 
   <div class="layout">
-    <nav class="toc" aria-label="Steps">
+    <nav class="toc" aria-label="Sections">
       <a href="#s1">1 · Board reading</a>
       <a href="#s2">2 · Your colour</a>
-      <a href="#s3">3 · iPhone Shortcut</a>
-      <a href="#s4">4 · Hands-free</a>
-      <a href="#s5">5 · Try it</a>
+      <a href="#glasses">3 · Meta glasses</a>
+      <a href="#s5">4 · Try it</a>
     </nav>
 
     <div class="steps">
       <section class="step" id="s1">
         <span class="n">1</span>
         <div>
-          <h2>Choose how photos are read</h2>
-          <p class="muted">Google's Gemini AI reads the board in each photo. Pick one:</p>
+          <h2>Choose how pictures are read</h2>
+          <p class="muted">Google's Gemini AI reads the board in each picture. Pick one:</p>
           <div class="options">
             <div class="option" id="optShared" hidden>
               <h3>Free shared key <span class="tag">nothing to set up</span></h3>
@@ -102,7 +103,7 @@
                 <button class="primary" id="saveKey">Save &amp; check</button>
                 <button id="removeKey" hidden>Use shared key instead</button>
               </div>
-              <p id="keyStatus" class="muted small">Saved only on this device and in your Shortcut. It's sent with each photo so Google can read the board; this site never stores it.</p>
+              <p id="keyStatus" class="muted small">Saved only on this device (and your Shortcut, if you use glasses). It's sent with each picture so Google can read the board; this site never stores it.</p>
             </div>
           </div>
         </div>
@@ -120,10 +121,12 @@
         </div>
       </section>
 
-      <section class="step" id="s3">
+      <section class="step" id="glasses">
         <span class="n">3</span>
         <div>
-          <h2>Add the iPhone Shortcut</h2>
+          <h2>Meta glasses <span class="tag">optional · iPhone</span></h2>
+          <p>Meta glasses can't stream to a web page, but they can take photos. An iPhone Shortcut sends each photo here and speaks the move in your glasses. Setup takes about five minutes.</p>
+          <h3 class="sub">a. Add the iPhone Shortcut</h3>
           <div id="shared" hidden>
             <p>Tap below on your iPhone. When Shortcuts asks, paste your <b>chess link</b>, and your <b>Gemini key</b> if you added one (otherwise leave it empty).</p>
             <p><a class="btn primary" id="shortcutLink" href="#">Add “Chess move” Shortcut</a></p>
@@ -146,13 +149,7 @@
               <li>Add <b>Speak Text</b> → <b>Dictionary Value</b>.</li>
             </ol>
           </details>
-        </div>
-      </section>
-
-      <section class="step" id="s4">
-        <span class="n">4</span>
-        <div>
-          <h2>Make it hands-free</h2>
+          <h3 class="sub">b. Make it hands-free</h3>
           <ol>
             <li>In the <b>Meta AI</b> app, turn on automatic import of photos from your glasses to the Photos app.</li>
             <li>On your iPhone: <b>Settings → Accessibility → Touch → Back Tap → Double Tap → Chess move</b>. The Action Button or “Hey Siri, chess move” work too.</li>
@@ -162,11 +159,11 @@
       </section>
 
       <section class="step" id="s5">
-        <span class="n">5</span>
+        <span class="n">4</span>
         <div>
           <h2>Try it without a board</h2>
-          <p>Open the <a id="testLink" href="/test">test board</a> on a computer, photograph its screen, and run the Shortcut. The page tells you whether the board was read correctly.</p>
-          <p><a class="btn" id="appLink" href="/play">Open your live board</a></p>
+          <p>Open the <a id="testLink" href="test.html">test board</a> on a computer and point any camera at the screen: your phone on the Play page, or your glasses with the Shortcut. The test board tells you whether the position was read correctly.</p>
+          <p><a class="btn primary" id="appLink" href="play.html">Start playing</a></p>
         </div>
       </section>
     </div>
@@ -180,14 +177,15 @@
   </div>
 </footer>
 
+<script src="config.js"></script>
 <script src="session.js"></script>
 <script>
   const $ = (id) => document.getElementById(id);
   const withGame = (p) => `${p}?game=${encodeURIComponent(CG.gameId)}`;
 
-  $("frameUrl").textContent = location.origin + withGame("/api/frame");
-  $("testLink").href = withGame("/test");
-  $("appLink").href = withGame("/play");
+  $("frameUrl").textContent = (CG.apiBase || location.origin) + withGame("/api/frame");
+  $("testLink").href = withGame("test.html");
+  $("appLink").href = withGame("play.html");
 
   let sharedAvailable = false;
 
@@ -214,7 +212,7 @@
     if (!key) return;
     $("keyStatus").textContent = "Checking…";
     $("keyStatus").className = "muted small";
-    const r = await fetch("/api/checkkey", { method: "POST", headers: { "x-gemini-key": key } }).then((r) => r.json()).catch(() => ({ ok: false, error: "Couldn't reach the server." }));
+    const r = await fetch(CG.apiBase + "/api/checkkey", { method: "POST", headers: { "x-gemini-key": key } }).then((r) => r.json()).catch(() => ({ ok: false, error: "Couldn't reach the server." }));
     if (r.ok) {
       CG.setKey(key);
       $("key").value = "";

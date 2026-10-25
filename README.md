@@ -1,18 +1,22 @@
-# Chess Glasses
+# Chess Vision
 
-Look at a chess board through Meta smart glasses (Ray-Ban Meta / Oakley Meta), and hear the engine's best move in your ear.
+Point any camera at a chess board (phone, laptop webcam, USB camera or Meta glasses) and get the best move, spoken out loud and drawn on screen.
+
+Live at **https://rohannamdhari.com/chessvision/**
 
 ```
-glasses camera ──► this app ──► Gemini (or Claude) reads the board ──► chess.js checks it's legal
+any camera ──► Chess Vision ──► Gemini (or Claude) reads the board ──► chess.js checks it's legal
                                                                         │  and tracks whose turn it is
-   your ear ◄── phone voice (Bluetooth to the glasses) ◄── Stockfish 19 picks the best move
+   voice + arrow on screen ◄── Stockfish 19 picks the best move
 ```
+
+**Using it:** open the **Play** page, pick a camera from the list (back or front camera, any webcam by name, a photo, a shared window, or Meta glasses), press **Start camera**, then **Scan board**. You can also turn on **Auto-scan**. The move appears over the camera preview, on the board and in the engine's top lines.
 
 - **Board reading:** a vision model turns the photo into an exact 8x8 placement and works out which way the board faces. By default this is Google's Gemini (`gemini-3.8-flash`) on its free tier. Claude (`claude-opus-5-5`, paid) is an optional alternative.
 - **Engine:** Stockfish 19 (WASM, lite single-threaded) runs locally. You get the best move, the evaluation and the top 3 lines.
 - **Game tracking:** each new scan is matched against the last position. The app knows when your opponent has moved (it tells you what they played), when it's their turn (it stays quiet), and it keeps castling and en-passant rights correct.
 - **Auto-scan:** the app only calls the API when the view has changed *and* has been still for about a second, so it doesn't scan a hand mid-move.
-- **Voice:** the move is spoken as e.g. "Knight g1 to f3, check". If your phone is paired with the glasses, the voice plays in the glasses' speakers.
+- **Voice:** the move is spoken as e.g. "Knight g1 to f3, check". If your phone is paired with Bluetooth earbuds or Meta glasses, you hear it there.
 
 ## Run it
 
@@ -30,15 +34,19 @@ npm install
 npm start
 ```
 
-Open http://localhost:3000. That page explains the app; **/setup** walks through setup, **/play** is the live board, and **/test** is a test board. The terminal also prints a `http://<your-LAN-IP>:3000/play?speaker=1` address. Open that on your phone for a big-text page that speaks every move.
+Open http://localhost:3000. The home page explains the app; **/play** is where you pick a camera and play, **/setup** holds the settings (key, colour, Meta glasses) and **/test** is a test board. The terminal also prints a `http://<your-LAN-IP>:3000/play?speaker=1` address. Open that on your phone for a big-text page that speaks every move.
 
 **Free-tier limits:** Google caps free requests per minute and per day, and the caps change over time. You can see yours in AI Studio. Free models are also often "experiencing high demand". The app tries `gemini-3.8-flash`, then `gemini-3.5-flash`, then `gemini-3.5-flash-lite`. Each attempt has a 40-second timeout, and a model that fails sits out for 2 minutes. Expect roughly 10 to 20 seconds per scan, longer when a model is overloaded. Each scan is one request. Auto-scan only fires when the board view changes, and waits at least 10 seconds between scans by default. If you hit the limit, the app tells you; raise **min gap** or wait. On the free tier, Google may use what you send to improve its products. The app sends only the board photo.
 
 Optional env vars: `PORT`; `GEMINI_MODEL` (pin one model and turn off the fallback chain); `CHESS_EFFORT` (`low` | `medium` | `high`, default `medium`; `low` reads faster); `VISION_PROVIDER=claude` with `ANTHROPIC_API_KEY` to use Claude instead (paid); `CHESS_MODEL` (Claude model, default `claude-opus-5-5`).
 
-## Getting the glasses' view into the app
+## Cameras
 
-Meta's glasses don't expose their camera to web pages, so there are four ways in.
+Any camera the browser can use works straight from the **Play** page. Browsers only allow cameras on `https` pages or on `localhost`. The published site is https, so phones work there. On a phone opening your PC's `http://` address, use **A photo…** instead.
+
+## Meta glasses (optional)
+
+Meta's glasses don't expose their camera to web pages, so there are a few ways in.
 
 ### 0. Connect the phone and the PC
 Your phone has to reach the PC running the server.
@@ -70,7 +78,7 @@ The `/api/frame` reply always has a `say` field that's worth speaking. It covers
 ### 1. Video call → window capture (works today, no extra code)
 1. On the computer running the app, sign in to WhatsApp Desktop or Messenger. Use a second account, or a contact who leaves the call open on that computer.
 2. From your phone, start a **video call** to that account. Then switch the call's camera to the glasses: double-press the capture button on the glasses, or use the camera-switch control in the call.
-3. Answer the call on the computer. In Chess Glasses, click **Capture a window**, pick the call window, and turn on **Auto-scan**.
+3. Answer the call on the computer. In Chess Vision, click **Capture a window**, pick the call window, and turn on **Auto-scan**.
 4. On your phone, open the `/play?speaker=1` page and tap once to enable voice. Some phones duck browser audio during a call. If yours does, leave **Voice** on in the computer's page and wear earbuds, or simply glance at the phone.
 
 ### 2. Photo mode (simplest)
@@ -99,18 +107,20 @@ client.newCall(req).execute().use { resp ->
 During the preview, Meta only lets you share builds with your own testers.
 
 ## No board? Use the test board
-Open `http://<PC address>:3000/test` on the PC. It shows a position full-screen. Photograph the screen with your iPhone or glasses and run the shortcut. The page checks what the app read against the real position, outlining wrong squares in red. Use the **I played the suggested move** and **Opponent makes a move** buttons to play through a game and test move tracking.
+Open the **Test board** on a computer. It shows a position full-screen. Point any camera at the screen and scan: a phone on the Play page, or your glasses with the Shortcut. The page checks what the app read against the real position, outlining wrong squares in red. Use the **I played the suggested move** and **Opponent makes a move** buttons to play through a game and test move tracking.
 
 ## Tips for good reads
 - Start scanning from the beginning of the game when you can. Once the app knows the position, each new photo only has to pick out which legal move was played. If the read is up to 4 squares off, the app snaps to the closest legal move and quietly fixes the misreads. The very first photo of a mid-game position has no history to check against, so misreads there need fixing by hand.
 - Set **I play** correctly before you start. The app uses it to guess which way the board faces and whose move it is on the first scan.
-- Keep the whole board in view. Looking down from your seat works well. Steep side angles make similar pieces (bishop and pawn, queen and king) harder to tell apart.
+- Keep the whole board in view. Holding or mounting the camera above the board works best. Steep side angles make similar pieces (bishop and pawn, queen and king) harder to tell apart.
 - If a square is misread, edit the **FEN** box and press **Analyze**. Tracking continues from the corrected position.
 - Press **New game** between games.
 
-## Publish it for other people (chess.rohannamdhari.com)
+## Publishing (rohannamdhari.com/chessvision)
 
-`rohannamdhari.com` is served by GitHub Pages, which only hosts static files, so the server runs on [Render](https://render.com) (free) and a subdomain points at it. The main site is untouched.
+The site is split in two:
+- **Website** (`public/`): published by GitHub Pages from this repo, `rohan2008/chessvision`. Your user site (`rohan2008.github.io`) already has the custom domain rohannamdhari.com, so this project's Pages site appears at **rohannamdhari.com/chessvision/** with no DNS changes. The workflow in `.github/workflows/pages.yml` deploys `public/` on every push to `main`.
+- **API server** (board reading, Stockfish, game tracking, the Shortcut's photo uploads): GitHub Pages can't run it, so it runs on [Render](https://render.com) (free) as `chessvision.onrender.com`. `public/config.js` sends the Pages site's requests there. When the same pages are served by the Node server (on your PC or on Render), they talk to that server instead.
 
 Everyone gets a private game. For board reading, the `/setup` page gives each person two choices:
 - **Free shared key (default):** visitors use your Gemini key with no setup. Each person (by IP address) gets `SHARED_DAILY_PER_USER` scans a day (30), and everyone together gets `SHARED_DAILY_TOTAL` (500). Scans Google was too busy to read don't count. When a limit is reached, the app says so and points to the setup page. The counts reset at midnight UTC, and also when the server restarts.
@@ -118,13 +128,11 @@ Everyone gets a private game. For board reading, the `/setup` page gives each pe
 
 Because the shared key is yours, all shared scans use your free Google quota, and Google may use free-tier images to improve its products. To turn sharing off, leave `GEMINI_API_KEY` empty on Render; then everyone needs their own key.
 
-1. **Push this folder to GitHub** as a new repository, e.g. `rohan2008/chess-glasses`. `.gitignore` already keeps `.env` (your key) and `node_modules` out.
-2. **Render:** sign in with GitHub. Choose **New → Blueprint**, pick the repo, and click **Apply**. When it asks for `GEMINI_API_KEY`, paste your key to offer free shared scans, or leave it empty. `render.yaml` sets up everything else. You get an address like `https://chess-glasses-xxxx.onrender.com`. Open `/setup` there to check it works.
-3. **Custom domain:**
-   1. In Render, open the service, go to **Settings → Custom Domains**, and add `chess.rohannamdhari.com`.
-   2. At **Spaceship** (your domain's DNS), open DNS records for rohannamdhari.com and add a **CNAME** record: host `chess`, value `chess-glasses-xxxx.onrender.com`, using Render's exact address.
-   3. Wait a few minutes. Render verifies the domain and turns on HTTPS automatically.
-4. **Share** `https://chess.rohannamdhari.com/setup`.
+1. **GitHub:** create the repository `rohan2008/chessvision` and push this folder to it. `.gitignore` already keeps `.env` (your key) and `node_modules` out.
+2. **GitHub Pages:** in the repo, go to **Settings → Pages** and set **Source** to **GitHub Actions**. The next push, or re-running the workflow, publishes the site to rohannamdhari.com/chessvision/.
+3. **Render:** sign in with GitHub. Choose **New → Blueprint**, pick the repo, and click **Apply**. When it asks for `GEMINI_API_KEY`, paste your key to offer free shared scans, or leave it empty. `render.yaml` sets up everything else.
+4. **Check the API address.** If Render's address isn't exactly `https://chessvision.onrender.com` (it adds a suffix when a name is taken), put the real address in `public/config.js` and push.
+5. **Share** `https://rohannamdhari.com/chessvision/`.
 
 **Optional: a one-tap Shortcut for everyone.**
 1. On your iPhone, build the Shortcut from `/setup`. Then **duplicate** it, and in the copy replace your key with the text `PASTE_KEY`, so your real key isn't shared.

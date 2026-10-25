@@ -43,7 +43,7 @@ const SCHEMA = {
 };
 
 const SYSTEM = `You transcribe photos of physical chess boards into exact piece placement.
-The photos come from a camera worn on the player's face (smart glasses) or a phone, so the board is often seen at an angle, partly cropped by perspective, with glare or a hand nearby.
+The photos come from a phone, webcam or smart glasses, so the board is often seen at an angle, partly cropped by perspective, with glare or a hand nearby.
 
 How to work:
 - First locate the 8x8 grid and its four corners. Count rows and columns carefully; do not merge or skip a row.

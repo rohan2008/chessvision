@@ -202,7 +202,7 @@ function apiError(err) {
 }
 
 const STATIC = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png" };
-const PAGES = { "/": "home.html", "/play": "play.html", "/test": "test.html", "/setup": "setup.html" };
+const PAGES = { "/": "index.html", "/play": "play.html", "/test": "test.html", "/setup": "setup.html" };
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
@@ -226,7 +226,13 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname === "/api/events") {
       const g = getGame(gameId);
-      res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache", connection: "keep-alive" });
+      res.writeHead(200, {
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache",
+        connection: "keep-alive",
+        // The website may be on another origin (GitHub Pages).
+        "access-control-allow-origin": "*",
+      });
       res.write(": hi\n\n");
       if (g.last) res.write(`data: ${JSON.stringify({ ...g.last, replay: true })}\n\n`);
       g.clients.add(res);
@@ -362,7 +368,7 @@ server.listen(PORT, "0.0.0.0", () => {
     .flatMap(([, addrs]) => addrs)
     .filter((i) => i.family === "IPv4" && !i.internal && !i.address.startsWith("169.254."))
     .map((i) => `http://${i.address}:${PORT}`);
-  console.log(`Chess Glasses running:\n  this computer: http://localhost:${PORT}`);
+  console.log(`Chess Vision running:\n  this computer: http://localhost:${PORT}`);
   for (const u of lan) console.log(`  phone (same Wi-Fi): ${u}/play?speaker=1`);
   console.log(`  board reader: ${visionInfo.provider} (${visionInfo.model})`);
   if (!visionInfo.hasKey) console.log("  no server key: each user adds their own Gemini key on /setup");
