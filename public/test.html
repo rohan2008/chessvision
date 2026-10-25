@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test Board</title>
+<style>
+  :root { --bg: #2b2620; --ink: #f1ece2; --muted: #b9b0a0; --ok: #7fd18b; --bad: #ff8a6b; --light: #eed9b6; --dark: #a97a52; --hl: rgba(255, 214, 0, .55); }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; display: flex; flex-direction: column; }
+  header { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 16px; }
+  header strong { margin-right: 6px; }
+  button { font: inherit; padding: 7px 11px; border-radius: 8px; border: 1px solid #5a5146; background: #3a332b; color: var(--ink); cursor: pointer; }
+  button:disabled { opacity: .45; cursor: default; }
+  #status { padding: 0 16px 8px; min-height: 1.4em; color: var(--muted); }
+  #status.ok { color: var(--ok); } #status.bad { color: var(--bad); }
+  main { flex: 1; display: grid; place-items: center; padding: 8px 16px 16px; min-height: 0; }
+  .board { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); grid-template-rows: repeat(8, minmax(0, 1fr));
+    width: min(92vw, calc(100vh - 140px)); aspect-ratio: 1; border: 10px solid #5b3f28; border-radius: 6px; }
+  .sq { display: grid; place-items: center; position: relative; overflow: hidden; line-height: 1; font-size: min(8.5vw, calc((100vh - 140px) / 9.5)); }
+  .sq.l { background: var(--light); } .sq.d { background: var(--dark); }
+  .sq.wrong::after { content: ""; position: absolute; inset: 3px; border: 4px solid #e0301e; border-radius: 4px; }
+  .sq.moved { box-shadow: inset 0 0 0 999px var(--hl); }
+  /* Classic diagram pieces: white = solid glyph in white under an outline glyph in black; black = solid glyph.
+     Text presentation (not emoji) so the colours apply. */
+  .sq span { grid-area: 1 / 1; font-family: "Segoe UI Symbol", "DejaVu Sans", "Noto Sans Symbols 2", "Apple Symbols", serif; font-variant-emoji: text; }
+  .wfill { color: #fffdf8; }
+  .wline, .pb { color: #141414; }
+</style>
+</head>
+<body>
+<header>
+  <strong>Test board</strong>
+  <button id="random">New random position</button>
+  <button id="start">Starting position</button>
+  <button id="mine" disabled>I played the suggested move</button>
+  <button id="theirs">Opponent makes a move</button>
+</header>
+<div id="status">Photograph this board with your iPhone or glasses, then run the Chess move shortcut.</div>
+<main><div class="board" id="board"></div></main>
+<script src="session.js"></script>
+<script type="module">
+import { Chess } from "/vendor/chess.js";
+
+const $ = (id) => document.getElementById(id);
+let game = new Chess();
+let myColor = "w";
+let lastBest = null; // { from, to, promotion }
+let moved = [];
+
+const SOLID = { k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟" };
+const OUTLINE = { k: "♔", q: "♕", r: "♖", b: "♗", n: "♘", p: "♙" };
+const TEXT = "︎"; // text presentation, not emoji
+
+function pieceSpans(type, color) {
+  const span = (cls, ch) => `<span class="${cls}">${ch}${TEXT}</span>`;
+  return color === "w" ? span("wfill", SOLID[type]) + span("wline", OUTLINE[type]) : span("pb", SOLID[type]);
+}
+const FILES = "abcdefgh";
+const placement = () => game.fen().split(" ")[0];
+
+function render(wrong = []) {
+  const board = $("board");
+  board.innerHTML = "";
+  const flip = myColor === "b";
+  for (let vr = 0; vr < 8; vr++) {
+    for (let vf = 0; vf < 8; vf++) {
+      const r = flip ? 7 - vr : vr, f = flip ? 7 - vf : vf;
+      const sq = FILES[f] + (8 - r);
+      const el = document.createElement("div");
+      el.className = "sq " + ((r + f) % 2 === 0 ? "l" : "d");
+      if (wrong.includes(sq)) el.classList.add("wrong");
+      if (moved.includes(sq)) el.classList.add("moved");
+      const p = game.get(sq);
+      if (p) el.innerHTML = pieceSpans(p.type, p.color);
+      board.append(el);
+    }
+  }
+}
+
+function status(text, cls = "") {
+  $("status").textContent = text;
+  $("status").className = cls;
+}
+
+async function newGame(chess) {
+  game = chess;
+  moved = [];
+  lastBest = null;
+  $("mine").disabled = true;
+  await CG.api("/api/settings", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ newGame: true }) });
+  render();
+  status(`New position, ${myColor === "w" ? "White" : "Black"} (you) to move. Photograph it and run the shortcut.`);
+}
+
+// A plausible-looking middlegame: random legal moves from the start, ending on your turn.
+function randomPosition() {
+  for (;;) {
+    const c = new Chess();
+    const plies = 14 + Math.floor(Math.random() * 16);
+    for (let i = 0; i < plies && !c.isGameOver(); i++) {
+      const moves = c.moves({ verbose: true });
+      // Prefer captures a little less, so boards stay busy.
+      const quiet = moves.filter((m) => !m.captured);
+      const pool = quiet.length && Math.random() < 0.75 ? quiet : moves;
+      c.move(pool[Math.floor(Math.random() * pool.length)]);
+    }
+    if (c.isGameOver()) continue;
+    if (c.turn() !== myColor) {
+      const moves = c.moves({ verbose: true });
+      c.move(moves[Math.floor(Math.random() * moves.length)]);
+    }
+    if (!c.isGameOver() && c.turn() === myColor) return new Chess(c.fen());
+  }
+}
+
+function play(m) {
+  const move = game.move(m);
+  moved = [move.from, move.to];
+  render();
+  return move;
+}
+
+$("random").onclick = () => newGame(randomPosition());
+$("start").onclick = () => newGame(new Chess());
+$("mine").onclick = () => {
+  if (!lastBest) return;
+  const m = play(lastBest);
+  lastBest = null;
+  $("mine").disabled = true;
+  status(`You played ${m.san}. Photograph again: it should say "Waiting for your opponent". Then tap "Opponent makes a move".`);
+};
+$("theirs").onclick = () => {
+  if (game.turn() === myColor) {
+    status("It's your move on this board. Play the suggested move first.", "bad");
+    return;
+  }
+  const moves = game.moves({ verbose: true });
+  const m = play(moves[Math.floor(Math.random() * moves.length)]);
+  status(`Opponent played ${m.san}. Photograph again: it should say "They played ${m.san}" and your next move.`);
+};
+
+// Every scan result is pushed here; check it against the board on screen.
+const events = CG.events();
+events.onmessage = (e) => {
+  const r = JSON.parse(e.data);
+  if (r.replay) return;
+  if (!r.ok) return status(`Scan failed: ${r.error}`, "bad");
+  // Check the position the app actually used (after snapping small misreads to a legal move).
+  const used = r.fen ? r.fen.split(" ")[0] : r.placement;
+  if (!used) return;
+  const read = new Chess();
+  read.load(`${used} w - - 0 1`, { skipValidation: true });
+  const wrong = [];
+  for (const f of FILES) for (let rank = 1; rank <= 8; rank++) {
+    const sq = f + rank, a = game.get(sq), b = read.get(sq);
+    if ((a?.type ?? "") + (a?.color ?? "") !== (b?.type ?? "") + (b?.color ?? "")) wrong.push(sq);
+  }
+  render(wrong);
+  const secs = r.visionMs ? ` in ${(r.visionMs / 1000).toFixed(1)}s` : "";
+  const fixed = r.corrected ? ` (Gemini misread ${r.corrected} square${r.corrected > 1 ? "s" : ""}; fixed from the game so far)` : "";
+  const head = wrong.length
+    ? `✗ ${wrong.length} square${wrong.length > 1 ? "s" : ""} wrong (outlined in red)${secs}.`
+    : `✓ Position correct${secs}${fixed}.`;
+  let tail = "";
+  if (r.best && r.yourTurn) {
+    lastBest = { from: r.best.from, to: r.best.to, promotion: r.best.uci[4] };
+    $("mine").disabled = !!wrong.length || game.turn() !== myColor;
+    tail = ` Suggested: ${r.best.san} ("${r.speech}"). Tap "I played the suggested move" to continue.`;
+  } else if (r.message) tail = ` ${r.message}`;
+  status(head + tail, wrong.length ? "bad" : "ok");
+};
+
+const s = await (await CG.api("/api/status")).json();
+myColor = s.myColor;
+newGame(randomPosition());
+</script>
+</body>
+</html>

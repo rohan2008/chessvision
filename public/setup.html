@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chess Glasses Setup</title>
+<style>
+  :root { --bg: #f6f5f1; --panel: #fff; --ink: #1d1d1b; --muted: #6b6a65; --line: #e3e1da; --accent: #2f6f4f; --accent-ink: #fff; --ok: #2f6f4f; --bad: #a3412a; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #151614; --panel: #1f201d; --ink: #ecebe6; --muted: #9a998f; --line: #34352f; --accent: #5fb08a; --accent-ink: #0f1a14; --ok: #7fd18b; --bad: #e07a5f; }
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  main { max-width: 680px; margin: 0 auto; padding: 20px 16px 48px; }
+  h1 { font-size: 24px; margin: 4px 0 4px; }
+  .lede { color: var(--muted); margin: 0 0 18px; }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin: 14px 0; }
+  h2 { font-size: 17px; margin: 0 0 8px; display: flex; gap: 10px; align-items: baseline; }
+  h2 .n { flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: inline-grid; place-items: center; font-size: 14px; }
+  p, li { color: var(--ink); }
+  a { color: var(--accent); }
+  a.btn.primary { color: var(--accent-ink); }
+  .muted { color: var(--muted); font-size: 14px; }
+  ol { padding-left: 22px; margin: 8px 0; } li { margin: 4px 0; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+  input[type=text], input[type=password] { flex: 1 1 240px; min-width: 0; font: inherit; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
+  button, .btn { font: inherit; padding: 9px 13px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; text-decoration: none; display: inline-block; }
+  .primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  code, .copy { font-family: ui-monospace, Consolas, monospace; font-size: 13px; overflow-wrap: anywhere; }
+  .copybox { display: flex; gap: 8px; align-items: center; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin: 6px 0; }
+  .copybox .copy { flex: 1; min-width: 0; }
+  .ok { color: var(--ok); font-weight: 600; } .bad { color: var(--bad); font-weight: 600; }
+  .seg button[aria-pressed=true] { outline: 2px solid var(--accent); }
+  .option { border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-top: 10px; }
+  .option h3 { font-size: 15px; margin: 0 0 4px; }
+  .option p { margin: 4px 0; }
+  .tag { font-size: 12px; font-weight: 500; color: var(--muted); border: 1px solid var(--line); border-radius: 99px; padding: 1px 8px; margin-left: 6px; }
+  footer { color: var(--muted); font-size: 13px; text-align: center; margin-top: 24px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>♞ Chess Glasses setup</h1>
+  <p class="lede">Look at a chess board through Meta glasses, take a photo, and hear the best move. Setup takes about 5 minutes on your iPhone.</p>
+
+  <section>
+    <h2><span class="n">1</span> Choose how photos are read</h2>
+    <p class="muted">Board reading uses Google's Gemini AI. Pick one:</p>
+
+    <div class="option" id="optShared" hidden>
+      <h3>Free shared key <span class="tag">nothing to set up</span></h3>
+      <p id="sharedInfo">Use this site's key. You get a number of free scans each day.</p>
+      <p id="usingShared" class="ok" hidden>✓ You're using the free shared key.</p>
+    </div>
+
+    <div class="option">
+      <h3>Your own free key <span class="tag">unlimited</span></h3>
+      <p>Sign in at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>, tap <b>Create API key</b>, copy it, and paste it here. It's free and takes about two minutes.</p>
+      <div class="row">
+        <input type="password" id="key" placeholder="Paste your Gemini API key" autocomplete="off" spellcheck="false">
+        <button class="primary" id="saveKey">Save &amp; check</button>
+        <button id="removeKey" hidden>Use shared key instead</button>
+      </div>
+      <p id="keyStatus" class="muted">Your key is saved only on this device and in your Shortcut. It's sent with each photo so Google can read the board, and this server never stores it.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">2</span> Which side are you playing?</h2>
+    <div class="row seg">
+      <button data-color="w">White</button>
+      <button data-color="b">Black</button>
+    </div>
+    <p class="muted">Change this at the start of each game. It tells the app which way the board faces and when it's your move.</p>
+  </section>
+
+  <section>
+    <h2><span class="n">3</span> Add the iPhone Shortcut</h2>
+    <div id="shared" hidden>
+      <p>Tap below on your iPhone. When Shortcuts asks, paste your <b>chess link</b>, and your <b>Gemini key</b> if you added one (otherwise leave it empty). Both are shown below.</p>
+      <p><a class="btn primary" id="shortcutLink" href="#">Add “Chess move” Shortcut</a></p>
+    </div>
+    <p>Your personal chess link (it keeps your game separate from everyone else's):</p>
+    <div class="copybox"><span class="copy" id="frameUrl"></span><button data-copy="frameUrl">Copy</button></div>
+    <div id="keyRow">
+      <p>Your Gemini key:</p>
+      <div class="copybox"><span class="copy" id="keyEcho"></span><button data-copy="keyEcho">Copy</button></div>
+    </div>
+    <details id="manual">
+      <summary>Or build the Shortcut yourself</summary>
+      <ol>
+        <li>Open <b>Shortcuts</b>, tap <b>+</b>, and name it <b>Chess move</b>.</li>
+        <li>Add <b>Get Latest Photos</b> (1 photo, Include Screenshots off).</li>
+        <li>Add <b>Convert Image</b> → <b>JPEG</b>.</li>
+        <li>Add <b>Resize Image</b> → width <b>1400</b>.</li>
+        <li>Add <b>Get Contents of URL</b>: paste your chess link. Expand it: <b>Method</b> POST. Only if you added your own key: under <b>Headers</b>, add a header named <code>x-gemini-key</code> with your key as its value. Set <b>Request Body</b> to <b>File</b> and choose <b>Resized Image</b>.</li>
+        <li>Add <b>Get Dictionary Value</b> → key <code>say</code> in <b>Contents of URL</b>.</li>
+        <li>Add <b>Speak Text</b> → <b>Dictionary Value</b>.</li>
+      </ol>
+    </details>
+  </section>
+
+  <section>
+    <h2><span class="n">4</span> Make it hands-free</h2>
+    <ol>
+      <li>In the <b>Meta AI</b> app, turn on automatic import of photos from your glasses to the Photos app.</li>
+      <li>On your iPhone: <b>Settings → Accessibility → Touch → Back Tap → Double Tap → Chess move</b>. Or use the Action Button, or say “Hey Siri, chess move”.</li>
+    </ol>
+    <p>During a game, when it's your move: say <b>“Hey Meta, take a photo”</b> while looking at the board. Wait a few seconds for it to import, then double-tap the back of your phone. You'll hear something like “They played Nf6. Knight g1 to f3”. Take a photo after your own move too, so the app keeps track of the game.</p>
+  </section>
+
+  <section>
+    <h2><span class="n">5</span> Try it without a board</h2>
+    <p>Open the <a id="testLink" href="/test">test board</a> on a computer, photograph its screen, and run the Shortcut. The page tells you whether the board was read correctly.</p>
+    <p class="muted">You can also follow your game on the <a id="appLink" href="/">live board page</a>.</p>
+  </section>
+
+  <footer>For practice, study and casual games. Using engine help in rated or tournament games is cheating.</footer>
+</main>
+<script src="session.js"></script>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const withGame = (p) => `${p}?game=${encodeURIComponent(CG.gameId)}`;
+
+  $("frameUrl").textContent = location.origin + withGame("/api/frame");
+  $("testLink").href = withGame("/test");
+  $("appLink").href = withGame("/");
+
+  let sharedAvailable = false;
+
+  function showKey() {
+    const own = !!CG.key;
+    $("keyEcho").textContent = own ? CG.key : sharedAvailable ? "(not needed: you're using the free shared key)" : "(save your key in step 1)";
+    $("key").placeholder = own ? "Saved. Paste a new key to replace it" : "Paste your Gemini API key";
+    $("removeKey").hidden = !(own && sharedAvailable);
+    $("usingShared").hidden = own || !sharedAvailable;
+  }
+  showKey();
+
+  $("removeKey").onclick = () => {
+    CG.setKey("");
+    $("keyStatus").textContent = "Removed. You're back on the free shared key.";
+    $("keyStatus").className = "muted";
+    showKey();
+  };
+
+  $("saveKey").onclick = async () => {
+    const key = $("key").value.trim() || CG.key;
+    if (!key) return;
+    $("keyStatus").textContent = "Checking…";
+    $("keyStatus").className = "muted";
+    const r = await fetch("/api/checkkey", { method: "POST", headers: { "x-gemini-key": key } }).then((r) => r.json()).catch(() => ({ ok: false, error: "Couldn't reach the server." }));
+    if (r.ok) {
+      CG.setKey(key);
+      $("key").value = "";
+      $("keyStatus").textContent = "✓ Key works and is saved on this device.";
+      $("keyStatus").className = "ok";
+      showKey();
+    } else {
+      $("keyStatus").textContent = `✗ ${r.error}`;
+      $("keyStatus").className = "bad";
+    }
+  };
+
+  async function setColor(c) {
+    await CG.api("/api/settings", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ myColor: c, newGame: true }) });
+    document.querySelectorAll(".seg button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.color === c));
+  }
+  document.querySelectorAll(".seg button").forEach((b) => (b.onclick = () => setColor(b.dataset.color)));
+
+  for (const b of document.querySelectorAll("[data-copy]")) {
+    b.onclick = async () => {
+      const text = $(b.dataset.copy).textContent;
+      if (text.startsWith("(")) return;
+      try {
+        await navigator.clipboard.writeText(text);
+        b.textContent = "Copied";
+        setTimeout(() => (b.textContent = "Copy"), 1500);
+      } catch {
+        prompt("Copy this:", text);
+      }
+    };
+  }
+
+  CG.api("/api/status").then((r) => r.json()).then((s) => {
+    document.querySelectorAll(".seg button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.color === s.myColor));
+    sharedAvailable = s.serverHasKey;
+    $("optShared").hidden = !sharedAvailable;
+    if (sharedAvailable) {
+      $("sharedInfo").textContent = s.sharedPerDay
+        ? `Use this site's key: ${s.sharedPerDay} free scan${s.sharedPerDay === 1 ? "" : "s"} per day (${s.sharedLeft} left today). When the shared key is busy or used up, the app tells you.`
+        : "Use this site's key. No setup needed.";
+    }
+    showKey();
+    if (s.shortcutUrl) {
+      $("shared").hidden = false;
+      $("shortcutLink").href = s.shortcutUrl;
+    } else {
+      $("manual").open = true;
+    }
+  });
+</script>
+</body>
+</html>

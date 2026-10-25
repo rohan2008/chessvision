@@ -1,0 +1,23 @@
+# Render Blueprint: New → Blueprint → pick this repo. Free plan sleeps when idle (first request ~30-60s).
+services:
+  - type: web
+    name: chess-glasses
+    runtime: node
+    plan: free
+    buildCommand: npm ci --omit=dev
+    startCommand: node server.js
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # Optional: iCloud link to your shareable "Chess move" Shortcut, shown on /setup.
+      - key: SHORTCUT_URL
+        sync: false
+      # Optional shared key: visitors without their own key use this one, within the daily limits below.
+      # Render asks for the value when you apply the Blueprint; leave it empty to require everyone's own key.
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SHARED_DAILY_PER_USER
+        value: "30"
+      - key: SHARED_DAILY_TOTAL
+        value: "500"
