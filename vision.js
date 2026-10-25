@@ -118,11 +118,28 @@ async function askClaude(base64, mediaType, myColor) {
 const GEMINI_MODELS = process.env.GEMINI_MODEL
   ? [process.env.GEMINI_MODEL]
   : ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite"];
-const GEMINI_TIMEOUT_MS = 40000;
-const COOLDOWN_MS = 2 * 60 * 1000;
-const cooldowns = new Map(); // api key -> (model -> timestamp until which it's skipped)
+const TIMEOUT_MS = 20000; // per model, before moving on to the next
+const LAST_TIMEOUT_MS = 35000; // the last model gets longer: there's nothing left to fall back to
+const BUSY_REST_MS = 2 * 60 * 1000; // after "overloaded" (503) or rate-limited (429)
+const TIMEOUT_REST_MS = 10 * 60 * 1000; // after a timeout: a hanging model costs the most time
+const health = new Map(); // api key -> { rest: Map(model -> until), lastGood: model }
 
 const isTransient = (err) => !err.status || err.status === 429 || err.status >= 500;
+const isTimeout = (err) => !err.status && /timeout|timed out|abort/i.test(`${err.name} ${err.message}`);
+
+/**
+ * The order to try models in: the one that answered last time first (unless it's resting), then the
+ * rest in preference order, then resting ones as a last resort. Exported for tests.
+ */
+export function modelOrder(models, { rest = new Map(), lastGood = null } = {}, now = Date.now()) {
+  const resting = (m) => (rest.get(m) ?? 0) > now;
+  const awake = models.filter((m) => !resting(m));
+  if (lastGood && awake.includes(lastGood)) {
+    awake.splice(awake.indexOf(lastGood), 1);
+    awake.unshift(lastGood);
+  }
+  return [...awake, ...models.filter(resting)];
+}
 
 // One client per key: each user brings their own free key, and the server's own key is the fallback.
 const geminiClients = new Map();
@@ -141,14 +158,17 @@ async function askGemini(base64, mediaType, myColor, userKey) {
   // Without a key the SDK falls back to Google Cloud credentials, which fails slowly and confusingly.
   if (!key) throw new Error("No API key set");
   const gemini = geminiClient(key);
-  // Overload cooldowns are per key: one user's quota running out says nothing about another's.
-  const skipUntil = cooldowns.get(key) ?? new Map();
-  cooldowns.set(key, skipUntil);
-  // Models that failed recently go to the back of the queue rather than being dropped.
-  const resting = (m) => (skipUntil.get(m) ?? 0) > Date.now();
-  const candidates = [...GEMINI_MODELS.filter((m) => !resting(m)), ...GEMINI_MODELS.filter(resting)];
+  // Model health is tracked per key: one user's quota running out says nothing about another's.
+  if (!health.has(key)) {
+    if (health.size > 500) health.clear();
+    health.set(key, { rest: new Map(), lastGood: null });
+  }
+  const h = health.get(key);
+  const candidates = modelOrder(GEMINI_MODELS, h);
   let lastErr;
-  for (const model of candidates) {
+  for (const [i, model] of candidates.entries()) {
+    const timeout_ms = i === candidates.length - 1 ? LAST_TIMEOUT_MS : TIMEOUT_MS;
+    const t0 = Date.now();
     try {
       const interaction = await gemini.interactions.create(
         {
@@ -162,13 +182,17 @@ async function askGemini(base64, mediaType, myColor, userKey) {
             { type: "image", data: base64, mime_type: mediaType, resolution: "high" },
           ],
         },
-        { timeout_ms: GEMINI_TIMEOUT_MS, retries: { strategy: "none" } },
+        { timeout_ms, retries: { strategy: "none" } },
       );
+      h.lastGood = model;
+      h.rest.delete(model);
       return { text: interaction.output_text, model };
     } catch (err) {
       if (!isTransient(err)) throw err;
-      console.warn(`[vision] ${model} unavailable (${err.status ?? err.name}), trying next model`);
-      skipUntil.set(model, Date.now() + COOLDOWN_MS);
+      const timedOut = isTimeout(err);
+      console.warn(`[vision] ${model} ${timedOut ? "timed out" : `unavailable (${err.status ?? err.name})`} after ${Date.now() - t0} ms, trying next model`);
+      h.rest.set(model, Date.now() + (timedOut ? TIMEOUT_REST_MS : BUSY_REST_MS));
+      if (h.lastGood === model) h.lastGood = null;
       lastErr = err;
     }
   }

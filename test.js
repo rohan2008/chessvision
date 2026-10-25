@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { gridToRanks, ranksToPlacement } from "./vision.js";
+import { gridToRanks, modelOrder, ranksToPlacement } from "./vision.js";
 import { GameTracker, speakMove } from "./game.js";
 import { Chess } from "chess.js";
 
@@ -113,4 +113,17 @@ test("moves are spoken clearly", () => {
   assert.equal(speakMove(k.move("O-O")), "Castle kingside");
   const m = new Chess("6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1");
   assert.equal(speakMove(m.move("Rd8#")), "Rook d1 to d8, checkmate");
+});
+
+test("model order: last working model first, resting models last", () => {
+  const models = ["big", "mid", "lite"];
+  const now = 1000;
+  assert.deepEqual(modelOrder(models, {}, now), ["big", "mid", "lite"]);
+  // After a slow scan that only "lite" answered, the next scan starts with it.
+  const rest = new Map([["big", now + 600000], ["mid", now + 120000]]);
+  assert.deepEqual(modelOrder(models, { rest, lastGood: "lite" }, now), ["lite", "big", "mid"]);
+  // Once the rests are over, "lite" still leads because it's the one known to work.
+  assert.deepEqual(modelOrder(models, { rest, lastGood: "lite" }, now + 700000), ["lite", "big", "mid"]);
+  // A resting lastGood doesn't jump the queue.
+  assert.deepEqual(modelOrder(models, { rest: new Map([["lite", now + 5]]), lastGood: "lite" }, now), ["big", "mid", "lite"]);
 });
